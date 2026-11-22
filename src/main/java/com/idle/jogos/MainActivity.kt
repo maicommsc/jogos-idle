@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -21,6 +22,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,6 +52,7 @@ class MainActivity : Activity() {
         val scroll = HorizontalScrollView(this).apply { addView(tabs) }
         bar.addView(scroll, LinearLayout.LayoutParams(0, WC, 1f))
         bar.addView(botao("＋") { adicionar() })
+        bar.addView(botao("🧹") { liberar() })
         bar.addView(botao("▭") { minimizar() })
         host = FrameLayout(this)
         root.addView(bar, LinearLayout.LayoutParams(MP, WC))
@@ -82,7 +85,11 @@ class MainActivity : Activity() {
         val w = WebView(this)
         w.settings.javaScriptEnabled = true
         w.settings.domStorageEnabled = true
-        w.settings.mediaPlaybackRequiresUserGesture = false
+        w.settings.mediaPlaybackRequiresUserGesture = true
+        w.settings.userAgentString = w.settings.userAgentString
+            .replace("; wv", "").replace("Version/4.0 ", "")
+        w.settings.javaScriptCanOpenWindowsAutomatically = true
+        w.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         w.webViewClient = WebViewClient()
         w.webChromeClient = WebChromeClient()
         CookieManager.getInstance().setAcceptThirdPartyCookies(w, true)
@@ -97,6 +104,28 @@ class MainActivity : Activity() {
         views.values.forEach { it.visibility = View.INVISIBLE }
         w.visibility = View.VISIBLE
         atualizarAbas()
+    }
+
+    private fun hibernarOutros(): Int {
+        val sair = views.keys.filter { it != current }
+        sair.forEach { u ->
+            views.remove(u)?.let {
+                host.removeView(it)
+                it.loadUrl("about:blank")
+                it.destroy()
+            }
+        }
+        return sair.size
+    }
+
+    private fun liberar() {
+        val n = hibernarOutros()
+        Toast.makeText(this, "$n aba(s) liberada(s) da memória", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level == 10 || level == 15 || level >= 40) hibernarOutros()
     }
 
     private fun adicionar() {
